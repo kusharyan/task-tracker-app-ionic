@@ -1,0 +1,51 @@
+<ion-content>
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title class="ion-text-center"> Register </ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+
+        <ion-item>
+          <ion-input label="Email" labelPlacement="stacked" type="email" formControlName="email" placeholder="Enter your email">
+            <ion-icon name="mail-sharp" slot="start"></ion-icon>
+          </ion-input>
+        </ion-item>
+        <div color="danger">
+          <small *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched">
+            *Enter a valid email.
+          </small>
+        </div>
+
+        <ion-item>
+          <ion-input label="Password" labelPlacement="stacked" placeholder="Enter your password" type="password" formControlName="password">
+          <ion-icon name="lock-closed" slot="start"></ion-icon>
+          </ion-input>
+        </ion-item>
+        <div color="danger">
+          <small *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched">
+            *Enter a valid password
+          </small>
+        </div>
+        <div color="danger">
+          <small *ngIf="registerForm.get('password')?.errors?.['minlength'] && registerForm.get('password')?.touched">
+            *Password must be at least 6 characters long
+          </small>
+        </div>
+
+        <ion-button type="submit" expand="block" [disabled]="registerForm.invalid">Signup</ion-button>
+       
+        <div class="ion-text-center">
+          <p>Already Have an account?
+            <a href="login-form">Login!</a>
+          </p>
+        </div>
+        
+        <div *ngIf="errorMessage">
+          <ion-text>Invalid Login Credentials</ion-text>
+        </div>
+
+      </form>
+    </ion-card-content>
+  </ion-card>
+</ion-content>

@@ -1,0 +1,59 @@
+<ion-content>
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title class="ion-text-center"> Login</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+
+        <ion-item>
+          <ion-input label="Email" labelPlacement="stacked" type="email" formControlName="email" placeholder="Enter your email">
+            <ion-icon name="mail-sharp" slot="start"></ion-icon>
+          </ion-input>
+        </ion-item>
+        <ion-note color="danger">
+          <small *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+            *Enter a valid email.
+          </small>
+        </ion-note>
+
+        <ion-item>
+          <ion-input label="Password" labelPlacement="stacked" placeholder="Enter your password" type="password" formControlName="password">
+          <ion-icon name="lock-closed" slot="start"></ion-icon>
+          </ion-input>
+        </ion-item>
+        
+        <div>
+          <ion-note color="danger">
+          <small *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+            *Enter a valid password
+          </small>
+        </ion-note>
+        </div>
+
+        <div>
+          <ion-note color="danger">
+          <small *ngIf="loginForm.get('password')?.errors?.['minlength'] && loginForm.get('password')?.touched">
+            *Password must be at least 6 characters long
+          </small>
+        </ion-note>
+        </div>
+
+        <div  class="ion-text-center">
+          <ion-note *ngIf="errorMessage">
+            <ion-text color="danger">Invalid Login Credentials</ion-text>
+          </ion-note>
+        </div>
+
+        <ion-button type="submit" expand="block" [disabled]="loginForm.invalid">Login</ion-button>
+       
+        <div class="ion-text-center">
+          <p>Don't have an account?
+            <a href="register-form">Register Now!</a>
+          </p>
+        </div>
+        
+      </form>
+    </ion-card-content>
+  </ion-card>
+</ion-content>
