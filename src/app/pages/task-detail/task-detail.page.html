@@ -1,80 +1,113 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>List of Tasks!</ion-title>
-    <ion-buttons slot="end">
-      <ion-button>
-        <ion-icon name="search-outline"></ion-icon>
-      </ion-button>
-      <ion-button>
-        <ion-icon slot="icon-only" name="filter-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
+    <ion-title>All Tasks</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
 
+  <ion-segment [(ngModel)]="filterStatus" name="filterStatus" (ionChange)="filterTasks()" class="ion-margin">
+    <ion-segment-button value="all">All</ion-segment-button>
+    <ion-segment-button value="completed">Completed</ion-segment-button>
+    <ion-segment-button value="pending">Pending</ion-segment-button>
+  </ion-segment>
+
   <ion-card *ngFor="let task of tasks">
-    <ion-card-content>
+    <ion-card-content (click)="openTaskModal(task)">
       <ion-item lines="none">
         <ion-label>
           <h2>{{ task.name }}</h2>
           <h3>{{ task.description }}</h3>
-          <p>Completed: {{ task.completed }}</p>
+          <p style="margin-top: 8px;">
+            <ion-badge [color]="task.completed ? 'success' : 'warning'">
+              {{ task.completed ? 'Completed' : 'Pending' }}
+            </ion-badge>
+          </p>
         </ion-label>
-
         <ion-buttons slot="end">
-          <ion-button color="danger" (click)="deleteTsk(task)">
+          <ion-button color="danger" (click)="deleteTsk(task, $event)">
             <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
           </ion-button>
 
-          <ion-button color="primary" (click)="startEdit(task)" [disabled]="task.completed">
-            <ion-icon slot="icon-only" name="create-outline" ></ion-icon>
+          <ion-button color="primary" (click)="startEdit(task, $event)" [disabled]="task.completed">
+            <ion-icon slot="icon-only" name="create-outline"></ion-icon>
           </ion-button>
         </ion-buttons>
       </ion-item>
     </ion-card-content>
   </ion-card>
 
+  <ion-modal [isOpen]="!!editTaskModal" (didDismiss)="cancelEdit()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Edit Task</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="cancelEdit()">
+              <ion-icon name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
 
-  <ion-modal [isOpen]="!!currentEditingTask" (didDismiss)="cancelEdit()">
-  <ng-template>
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Edit Task</ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="cancelEdit()">
-            <ion-icon name="close-outline"></ion-icon>
+      <ion-content class="ion-padding">
+        <form action="" (ngSubmit)="saveEdit()">
+          <ion-item>
+            <ion-input label="Task Name" [(ngModel)]="editedTaskName" name="editedTaskName" required></ion-input>
+          </ion-item>
+
+          <ion-item>
+            <ion-textarea label="Description" [(ngModel)]="editedDescription"
+              name="editedDescription" placeholder="Enter description">
+            </ion-textarea>
+          </ion-item>
+
+          <ion-button expand="block" color="success" type="submit">
+            Save
           </ion-button>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
 
-    <ion-content class="ion-padding">
-      <ion-item>
-        <ion-input
-          label="Task Name"
-          [(ngModel)]="editedTaskName"
-          required
-        ></ion-input>
-      </ion-item>
+          <ion-button expand="block" color="medium" (click)="cancelEdit()">
+            Cancel
+          </ion-button>
+        </form>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 
-      <ion-item>
-        <ion-textarea
-          label="Description"
-          [(ngModel)]="editedDescription"
-        ></ion-textarea>
-      </ion-item>
-
-      <ion-button expand="block" color="success" (click)="saveEdit()">
-        Save
-      </ion-button>
-
-      <ion-button expand="block" color="medium" (click)="cancelEdit()">
-        Cancel
-      </ion-button>
-    </ion-content>
-  </ng-template>
-</ion-modal>
-
+  <ion-modal [isOpen]="!!taskModal" (didDismiss)="closeTaskModal()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Task Details</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="closeTaskModal()">
+              <ion-icon name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card *ngIf="taskModal">
+          <ion-card-content>
+            <h2>{{ taskModal.name }}</h2>
+            <p>{{ taskModal.description }}</p>
+            <p>
+              <ion-badge [color]="taskModal.completed ? 'success' : 'warning'">
+                {{ taskModal.completed ? 'Completed' : 'Pending' }}
+              </ion-badge>
+            </p>
+            <p class="ion-text-end" style="font-size: 0.8rem; color: gray;">
+              Created on: {{ taskModal.createdAt | date:'mediumDate' }}
+            </p>
+          </ion-card-content>
+        </ion-card>
+        <ion-button expand="block" color="success" *ngIf="!taskModal?.completed" (click)="markAsCompleted()">
+          Mark as Complete
+        </ion-button>
+        <ion-button expand="block" color="medium" (click)="closeTaskModal()">
+          Close
+        </ion-button>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </ion-content>

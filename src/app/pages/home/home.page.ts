@@ -11,7 +11,7 @@ import {
   IonCardTitle,
   IonCardContent,
   IonInput,
-  IonItem, IonLabel, IonTextarea, IonButton, IonNote, IonIcon, IonBadge, IonText, IonCol, IonRow, IonGrid } from '@ionic/angular/standalone';
+  IonItem, IonTextarea, IonButton, IonNote, IonIcon, IonBadge, IonText, IonCol, IonRow, IonGrid } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
 import { TaskService } from 'src/app/services/task.service';
 import { AuthService } from 'src/app/services/auth.service';
@@ -19,6 +19,7 @@ import { RTask } from 'src/app/model/task.model';
 import { addIcons } from 'ionicons';
 import { logOutOutline, syncOutline } from 'ionicons/icons';
 import { ToastController} from '@ionic/angular';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 
 @Component({
   selector: 'app-home',
@@ -35,7 +36,8 @@ import { ToastController} from '@ionic/angular';
     IonContent, 
     CommonModule,
     FormsModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    ScrollingModule
   ],
 })
 export class HomePage implements OnInit {
