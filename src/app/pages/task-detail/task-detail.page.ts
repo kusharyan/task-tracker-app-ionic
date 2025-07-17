@@ -17,8 +17,11 @@ import {
 import { TaskService } from 'src/app/services/task.service';
 import { RTask } from 'src/app/model/task.model';
 import { addIcons } from 'ionicons';
-import { trashOutline, filterOutline, closeOutline, createOutline } from 'ionicons/icons';
+import { trashOutline, filterOutline, closeOutline, createOutline, camera } from 'ionicons/icons';
 import { ToastController, AlertController } from '@ionic/angular';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Subscription } from 'rxjs';
+import { SqliteService } from 'src/app/services/sqlite.service';
 
 @Component({
   selector: 'app-task-detail',
@@ -39,8 +42,6 @@ import { ToastController, AlertController } from '@ionic/angular';
     IonToolbar,
     IonTitle,
     IonContent,
-    IonSegmentButton,
-    IonSegment,
     IonTextarea,
     CommonModule
     
@@ -48,6 +49,7 @@ import { ToastController, AlertController } from '@ionic/angular';
 })
 export class TaskDetailPage implements OnInit {
   tasks: RTask[] = [];
+  taskSub!: Subscription;
 
   taskModal: RTask | null = null;
   editTaskModal: RTask | null = null;
@@ -57,19 +59,29 @@ export class TaskDetailPage implements OnInit {
   filteredTasks: RTask[] = [];
   filterStatus: string = 'all';
 
+  capturedImage : string | undefined;
+
   constructor(
     private taskService: TaskService,
+    private sqlite: SqliteService,
     private toastCtrl: ToastController,
     private alertCtrl: AlertController,
   ) {
-    addIcons({ filterOutline, trashOutline, createOutline, closeOutline });
+    addIcons({camera,trashOutline,createOutline,closeOutline,filterOutline});
   }
 
   ngOnInit() {
     this.fetchTasks();
-    this.taskService.taskSubject$.subscribe(() => {
+    this.taskSub = this.taskService.taskSubject$.subscribe(() => {
       this.fetchTasks();
     });
+  }
+
+  ionViewDidLeave(){
+    if(this.taskSub){
+      this.taskSub.unsubscribe();
+      console.log("Data in Tab 2 stopped fetching!");
+    }
   }
 
   fetchTasks() {
@@ -115,6 +127,8 @@ export class TaskDetailPage implements OnInit {
     };
     this.taskService.updateTask(updated._id!, updated).subscribe({
       next: async (res) => {
+        // await this.sqlite.updateLocalTask(updated);
+
         this.taskService.tasksFetch();
         this.cancelEdit();
         console.log(res);
@@ -145,6 +159,8 @@ export class TaskDetailPage implements OnInit {
             if (!task._id) return;
             this.taskService.deleteTask(task._id).subscribe({
               next: async (data) => {
+                // await this.sqlite.deleteLocalTask(task._id!);
+
                 this.taskService.tasksFetch();
                 console.log(data);
                 await this.deleteToast('Task Deleted Successfully!');
@@ -177,7 +193,9 @@ export class TaskDetailPage implements OnInit {
       completed: true,
     };
     this.taskService.updateTask(this.taskModal._id, updated).subscribe({
-      next: () => {
+      next: async () => {
+        // await this.sqlite.updateLocalTask(updated);
+
         this.fetchTasks();
         this.closeTaskModal();
       },
@@ -204,4 +222,18 @@ export class TaskDetailPage implements OnInit {
     });
     await toast.present();
   }
+  
+  async takePhoto() {
+    const image = await Camera.getPhoto({
+      quality : 90,
+      allowEditing : true,
+      resultType : CameraResultType.DataUrl,
+      source : CameraSource.Camera,
+      saveToGallery: true
+    })
+    this.capturedImage = image.webPath;
+  }
+
+
+
 }

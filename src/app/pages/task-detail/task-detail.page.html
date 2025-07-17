@@ -6,11 +6,11 @@
 
 <ion-content>
 
-  <ion-segment [(ngModel)]="filterStatus" name="filterStatus" (ionChange)="filterTasks()" class="ion-margin">
+  <!-- <ion-segment [(ngModel)]="filterStatus" name="filterStatus" (ionChange)="filterTasks()" class="ion-margin">
     <ion-segment-button value="all">All</ion-segment-button>
     <ion-segment-button value="completed">Completed</ion-segment-button>
     <ion-segment-button value="pending">Pending</ion-segment-button>
-  </ion-segment>
+  </ion-segment> -->
 
   <ion-card *ngFor="let task of tasks">
     <ion-card-content (click)="openTaskModal(task)">
@@ -83,6 +83,9 @@
             <ion-button (click)="closeTaskModal()">
               <ion-icon name="close-outline"></ion-icon>
             </ion-button>
+            <ion-button slot="end" (click)="takePhoto()" color="primary">
+              <ion-icon name="camera"></ion-icon>
+            </ion-button>
           </ion-buttons>
         </ion-toolbar>
       </ion-header>
@@ -107,6 +110,10 @@
         <ion-button expand="block" color="medium" (click)="closeTaskModal()">
           Close
         </ion-button>
+
+        <ion-card *ngIf="capturedImage">
+          <img [src]="capturedImage">
+        </ion-card>
       </ion-content>
     </ng-template>
   </ion-modal>

@@ -11,15 +11,17 @@ import {
   IonCardTitle,
   IonCardContent,
   IonInput,
-  IonItem, IonTextarea, IonButton, IonNote, IonIcon, IonBadge, IonText, IonCol, IonRow, IonGrid } from '@ionic/angular/standalone';
+  IonItem, IonTextarea, IonButton, IonNote, IonIcon, IonBadge, IonText, IonCol, IonRow, IonGrid, IonButtons, IonTabButton } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
 import { TaskService } from 'src/app/services/task.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { RTask } from 'src/app/model/task.model';
 import { addIcons } from 'ionicons';
-import { logOutOutline, syncOutline } from 'ionicons/icons';
+import { logOutOutline, syncOutline, camera } from 'ionicons/icons';
 import { ToastController} from '@ionic/angular';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { SqliteService } from 'src/app/services/sqlite.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-home',
@@ -43,26 +45,37 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 export class HomePage implements OnInit {
   taskForm!: FormGroup;
   tasks: RTask[] = [];
+  taskSub!: Subscription;
 
   constructor(
     private auth: AuthService, 
     private taskService: TaskService, 
+    private sqlite: SqliteService,
     private router: Router, 
     private fb: FormBuilder,
     private toast: ToastController) { 
-      addIcons({logOutOutline,syncOutline});
-    }
+      addIcons({logOutOutline,camera,syncOutline});
+  }
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.taskForm = this.fb.group({
       name: ['', Validators.required],
       description: ['']
     });
+  }
 
+  ionViewDidEnter() {
     this.fetchTasks();
-    this.taskService.taskSubject$.subscribe(()=>{
+    this.taskSub =  this.taskService.taskSubject$.subscribe(()=>{
       this.fetchTasks();
     })
+  }
+
+  ionViewDidLeave(){
+    if(this.taskSub){
+      this.taskSub.unsubscribe();
+      console.log("Data Fetching stopped in Tab 1!")
+    }
   }
 
   fetchTasks(){
@@ -83,8 +96,9 @@ export class HomePage implements OnInit {
       const {name, description} = this.taskForm.value;
       console.log(this.taskForm.value);  
       this.taskService.addTasks({...this.taskForm.value, completed: false}).subscribe({
-        next: async (data)=> {
-          console.log('Task Added: ', data);
+        next: async (data: RTask)=> {
+          console.log('Task Added(API): ', data);
+
           this.taskService.tasksFetch();
           await this.showToast('Task Created Successfully!')
         },
@@ -110,4 +124,3 @@ export class HomePage implements OnInit {
     await toast.present();
   }
 }
-
