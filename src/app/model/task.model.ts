@@ -11,4 +11,5 @@ export interface RTask{
   description: string;
   completed: boolean;
   createdAt?: string
+  synced?: number;
 }

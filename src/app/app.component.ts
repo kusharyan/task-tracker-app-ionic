@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
-import { TabsPage } from './tabs/tabs.page';
+import { SqliteService } from './services/sqlite.service';
 
 @Component({
   selector: 'app-root',
@@ -8,5 +8,16 @@ import { TabsPage } from './tabs/tabs.page';
   imports: [IonApp, IonRouterOutlet],
 })
 export class AppComponent {
-  constructor() {}
+  constructor(private sqlite: SqliteService) {
+
+  }
+
+  async initApp(){
+    try{  
+      await this.sqlite.initDB();
+      console.log("SQLite initialized in AppComponent!");
+    }catch(err){
+      console.error("SQLite initialization failed!", err);
+    }
+  }
 }

@@ -8,8 +8,8 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <div>
+<ion-content class="scroll-content">
+  <div class="add-task-sticky">
     <ion-card>
 
       <ion-card-header>
@@ -42,9 +42,9 @@
     </ion-card>
   </div>
 
-  <div>
+  <div class="task-list">
     <h3 class="ion-padding-start">Recent Tasks</h3>
-    <!-- <cdk-virtual-scroll-viewport> -->
+    <!-- <cdk-virtual-scroll-viewport itemSize="100"> -->
       <ion-card *ngFor="let task of tasks">
         <ion-card-content>
           <ion-grid class="ion-no-padding">
@@ -76,39 +76,6 @@
         </ion-card-content>
       </ion-card>
     <!-- </cdk-virtual-scroll-viewport> -->
-  
-    <!-- <cdk-virtual-scroll-viewport itemSize="100" class="viewport">
-      <ion-card *cdkVirtualFor="let task of tasks">
-        <ion-card-content>
-          <ion-grid class="ion-no-padding">
-            <ion-row class="ion-align-items-center">
-              <ion-col size="9">
-                <h2>{{ task.name }}</h2>
-              </ion-col>
-              <ion-col size="3" class="ion-text-right">
-                <ion-badge [color]="task.completed ? 'success' : 'warning'">
-                  {{ task.completed ? 'Completed' : 'Pending' }}
-                </ion-badge>
-              </ion-col>
-            </ion-row>
-    
-            <ion-row>
-              <ion-col>
-                <p>{{ task.description }}</p>
-              </ion-col>
-            </ion-row>
-    
-            <ion-row>
-              <ion-col class="ion-text-end">
-                <p style="font-size: 0.8rem; color: gray;">
-                  Created on: {{ task.createdAt | date:'mediumDate' }}
-                </p>
-              </ion-col>
-            </ion-row>
-          </ion-grid>
-        </ion-card-content>
-      </ion-card>
-    </cdk-virtual-scroll-viewport> -->
   </div>
 
   <div *ngIf="tasks.length === 0" class="ion-text-center ion-padding">

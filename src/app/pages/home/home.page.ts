@@ -21,7 +21,8 @@ import { logOutOutline, syncOutline, camera } from 'ionicons/icons';
 import { ToastController} from '@ionic/angular';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { SqliteService } from 'src/app/services/sqlite.service';
-import { Subscription } from 'rxjs';
+import { isObservable, Subscription } from 'rxjs';
+import { NetworkService } from 'src/app/services/network.service';
 
 @Component({
   selector: 'app-home',
@@ -51,6 +52,7 @@ export class HomePage implements OnInit {
     private auth: AuthService, 
     private taskService: TaskService, 
     private sqlite: SqliteService,
+    private netwrork: NetworkService,
     private router: Router, 
     private fb: FormBuilder,
     private toast: ToastController) { 
@@ -78,32 +80,60 @@ export class HomePage implements OnInit {
     }
   }
 
-  fetchTasks(){
-    this.taskService.loadTasks().subscribe({
-      next: (data)=> {
-        console.log(data);
-        this.tasks = data
-          .filter(task=> task.createdAt)
-          .sort((a, b)=> new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-          .slice(0, 4);
-      },
-      error: (err)=> console.error('ERROR: ', err)
-    })
+  async fetchTasks(){
+    try{
+      const res = await this.taskService.loadTasks();
+      console.log(res);
+      this.tasks = res
+        .filter(task=> task.createdAt)
+        .sort((a, b)=> new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+        .slice(0, 4);
+    } catch(e){
+      console.error("ERROR while Fetching tasks: ", e);
+    }
+    // this.taskService.loadTasks().subscribe({
+    //   next: (data)=> {
+    //     console.log(data);
+    //     this.tasks = data
+    //       .filter(task=> task.createdAt)
+    //       .sort((a, b)=> new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+    //       .slice(0, 4);
+    //   },  
+    //   error: (err)=> console.error('ERROR: ', err)
+    // })
   }
 
   async addTask() {
     if(this.taskForm.valid){
       const {name, description} = this.taskForm.value;
-      console.log(this.taskForm.value);  
-      this.taskService.addTasks({...this.taskForm.value, completed: false}).subscribe({
-        next: async (data: RTask)=> {
-          console.log('Task Added(API): ', data);
+      console.log(this.taskForm.value);
 
-          this.taskService.tasksFetch();
-          await this.showToast('Task Created Successfully!')
-        },
-        error: (err)=> console.log('ERROR: ', err)
-      })
+      const newTask: RTask= {
+        name,
+        description,
+        completed: false,
+        userId: localStorage.getItem('userId') || '',
+        createdAt: new Date().toISOString(),
+      }
+
+      // const isOnline = this.netwrork.isOnline;
+      try{
+        const res = await this.taskService.addTasks(newTask);
+        this.taskService.tasksFetch();
+        await this.showToast("Task Created Successfully!");
+      } catch(err){
+        console.error("ERROR: ", err);
+        await this.showToast("Failed to create task!");
+      }
+      // this.taskService.addTasks({...this.taskForm.value, completed: false}).subscribe({
+      //   next: async (data: RTask)=> {
+      //     console.log('Task Added(API): ', data);
+
+      //     this.taskService.tasksFetch();
+      //     await this.showToast('Task Created Successfully!')
+      //   },
+      //   error: (err)=> console.log('ERROR: ', err)
+      // })
       this.taskForm.reset(); 
     }
   }

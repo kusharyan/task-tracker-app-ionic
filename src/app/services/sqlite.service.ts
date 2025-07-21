@@ -12,20 +12,22 @@ export class SqliteService {
 
   constructor() {
     this.sqlite = new SQLiteConnection(CapacitorSQLite);
-    this.initDB();
+    // this.initDB();
   }
 
   async initDB() {
     try {
-      const databaseExists = await this.sqlite?.isConnection(this.dbName, true);
-      console.log('Connection Already Exists: ', databaseExists);
+      const dbName = this.dbName;
+      const consistency = await this.sqlite?.checkConnectionsConsistency();
+      const isConnected = await this.sqlite?.isConnection(dbName, false);
+      console.log('Connection Already Exists: ', isConnected);
 
-      if (databaseExists?.result) {
-        this.db = await this.sqlite?.retrieveConnection(this.dbName, true);
+      if (isConnected?.result) {
+        this.db = await this.sqlite?.retrieveConnection(dbName, true);
         console.log('Retrieve Database: ');
       } else {
         this.db = await this.sqlite?.createConnection(
-          'taskDb',
+          dbName,
           false,
           'no-encryption',
           1,
@@ -41,7 +43,8 @@ export class SqliteService {
           description TEXT,
           completed INTEGER DEFAULT 0,
           createdAt TEXT,
-          synced BOOLEAN)`);
+          synced INTEGER DEFAULT 0,
+          isDeleted INTEGER DEFAULT 0)`);
       }
     } catch (err) {
       console.error('SQLite Init error: ', err);
@@ -50,34 +53,38 @@ export class SqliteService {
 
   async addLocalTasks(task: RTask) {
     if (!this.db) return;
-    const completed = task.completed ? 1 : 0;
-    const synced = 0;
+    // const isCompleted = task.completed ? 1 : 0;
+    // const synced = 0;
 
-    const query = `INSERT INTO tasks (_id, userId, name, description, completed, createdAt, synced) VALUES ( ?, ?, ?, ?, ?, ?)`;
+    const query = `INSERT OR REPLACE INTO tasks (_id, userId, name, description, completed, createdAt, synced) VALUES ( ?, ?, ?, ?, ?, ?, ?)`;
 
     const values = [
       task._id,
       task.userId,
       task.name,
       task.description,
-      task.completed,
+      task.completed ? 1 : 0,
       task.createdAt,
-      synced,
+      task.synced ?? 0,
+      0,
     ];
     await this.db.run(query, values);
   }
 
   async getLocalTasks(): Promise<RTask[]> {
     if (!this.db) return [];
-    const result = await this.db.query(`SELECT * FROM tasks`);
+    const result = await this.db.query(
+      `SELECT * FROM tasks WHERE isDeleted = 0`
+    );
     return (
       result.values?.map((t) => ({
         _id: t._id,
         userId: t.userId,
         name: t.name,
         description: t.description,
-        completed: t.completed,
-        createdAt: t.creadtedAt,
+        completed: !!t.completed,
+        createdAt: t.createdAt,
+        synced: t.synced,
       })) || []
     );
   }
@@ -85,44 +92,58 @@ export class SqliteService {
   async deleteLocalTask(_id: string) {
     if (!this.db) return;
     try {
-      await this.db.run(`DELETE FROM tasks WHERE _id = ?`, [_id]);
+      const query = `DELETE FROM tasks WHERE _id = ?`;
+      await this.db.run(query, [_id]);
     } catch (err) {
-      console.error(err);
+      console.error('ERROR Occurred while deleting local tasks: ', err);
     }
   }
 
-  async updateLocalTask(task: RTask) {
+  async updateLocalTask(task: RTask): Promise<void> {
     if (!this.db) return;
     try {
-      const completed = task.completed ? 1 : 0;
-      const query = `UPDATE tasks SET name = ?, description = ?, completed = ? WHERE _id = ?`;
+      // const completed = task.completed ? 1 : 0;
+      const query = `UPDATE tasks SET name = ?, description = ?, completed = ?, synced = ? WHERE _id = ?`;
       await this.db.run(query, [
         task.name,
         task.description,
-        completed,
+        task.completed ? 1 : 0,
+        task.synced ?? 0,
         task._id,
       ]);
     } catch (err) {
-      console.error(err);
+      console.error('ERROR Occurred while updating local tasks: ', err);
     }
   }
 
   async getUnsyncedTasks(): Promise<RTask[]> {
-    if (!this.db) {
-      console.log('DB initialization error');
-      return [];
-    }
+    if (!this.db) return [];
     const res = await this.db?.query('SELECT * FROM tasks WHERE synced = 0');
-    return res?.values || [];
+    return (
+      res?.values?.map((t) => ({
+        _id: t._id,
+        userId: t.userId,
+        name: t.name,
+        description: t.description,
+        completed: !!t.completed,
+        createdAt: t.createdAt,
+        synced: t.synced,
+      })) || []
+    );
   }
 
   async markTaskAsSynced(_id: string) {
     try {
-      const query = `UPDATE tasks SET synced = 1 WHERE _id = ?;`;
+      const query = `UPDATE tasks SET synced = 1 WHERE _id = ?`;
       await this.db?.run(query, [_id]);
     } catch (err) {
       console.error(err);
     }
+  }
+
+  async replaceTask(localId: string, newTask: RTask) {
+    await this.deleteLocalTask(localId);
+    await this.addLocalTasks(newTask);
   }
 
   async clearLocalTasks() {
@@ -133,7 +154,7 @@ export class SqliteService {
     try {
       await this.db.execute('DELETE FROM tasks');
     } catch (err) {
-      console.error(err);
+      console.error('ERROR Occurred while clearing local tasks: ', err);
     }
   }
 }

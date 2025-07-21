@@ -22,14 +22,4 @@ export class NetworkService {
   get isOnline(): boolean{
     return this._isOnline.value;
   }
-
-  // private async initNetworkListener() {
-  //   const status = await Network.getStatus();
-  //   this.online$.next(status.connected);
-
-  //   Network.addListener('networkStatusChange', (status) => {
-  //     this.online$.next(status.connected);
-  //   });
-  // }
-
 }

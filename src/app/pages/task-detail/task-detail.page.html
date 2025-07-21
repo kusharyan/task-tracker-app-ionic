@@ -6,11 +6,17 @@
 
 <ion-content>
 
-  <!-- <ion-segment [(ngModel)]="filterStatus" name="filterStatus" (ionChange)="filterTasks()" class="ion-margin">
-    <ion-segment-button value="all">All</ion-segment-button>
-    <ion-segment-button value="completed">Completed</ion-segment-button>
-    <ion-segment-button value="pending">Pending</ion-segment-button>
-  </ion-segment> -->
+  <ion-segment [(ngModel)]="filterStatus" (ionChange)="filterTasks()">
+    <ion-segment-button value="all">
+      <ion-icon name="list-outline"></ion-icon>
+    </ion-segment-button>
+    <ion-segment-button value="completed">
+      <ion-icon name="checkmark-done-outline"></ion-icon>
+    </ion-segment-button>
+    <ion-segment-button value="pending">
+      <ion-icon name="time-outline"></ion-icon>
+    </ion-segment-button>
+  </ion-segment>
 
   <ion-card *ngFor="let task of tasks">
     <ion-card-content (click)="openTaskModal(task)">
@@ -26,11 +32,13 @@
         </ion-label>
         <ion-buttons slot="end">
           <ion-button color="danger" (click)="deleteTsk(task, $event)">
-            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+            <!-- <ion-icon slot="icon-only" name="trash-outline"></ion-icon> -->
+             DELETE
           </ion-button>
 
           <ion-button color="primary" (click)="startEdit(task, $event)" [disabled]="task.completed">
-            <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+            <!-- <ion-icon slot="icon-only" name="create-outline"></ion-icon> -->
+             EDIT
           </ion-button>
         </ion-buttons>
       </ion-item>

@@ -17,11 +17,12 @@ import {
 import { TaskService } from 'src/app/services/task.service';
 import { RTask } from 'src/app/model/task.model';
 import { addIcons } from 'ionicons';
-import { trashOutline, filterOutline, closeOutline, createOutline, camera } from 'ionicons/icons';
+import { trashOutline, filterOutline, closeOutline, createOutline, camera, listOutline, checkmarkDoneOutline, timeOutline, searchOutline } from 'ionicons/icons';
 import { ToastController, AlertController } from '@ionic/angular';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Subscription } from 'rxjs';
 import { SqliteService } from 'src/app/services/sqlite.service';
+import { NetworkService } from 'src/app/services/network.service';
 
 @Component({
   selector: 'app-task-detail',
@@ -43,11 +44,12 @@ import { SqliteService } from 'src/app/services/sqlite.service';
     IonTitle,
     IonContent,
     IonTextarea,
-    CommonModule
+    CommonModule,
+    IonSegment, IonSegmentButton
     
   ],
 })
-export class TaskDetailPage implements OnInit {
+export class TaskDetailPage  {
   tasks: RTask[] = [];
   taskSub!: Subscription;
 
@@ -64,13 +66,14 @@ export class TaskDetailPage implements OnInit {
   constructor(
     private taskService: TaskService,
     private sqlite: SqliteService,
+    private network: NetworkService,
     private toastCtrl: ToastController,
     private alertCtrl: AlertController,
   ) {
-    addIcons({camera,trashOutline,createOutline,closeOutline,filterOutline});
+    addIcons({searchOutline,listOutline,checkmarkDoneOutline,timeOutline,closeOutline,camera,trashOutline,createOutline,filterOutline});
   }
 
-  ngOnInit() {
+  ionViewDidEnter() {
     this.fetchTasks();
     this.taskSub = this.taskService.taskSubject$.subscribe(() => {
       this.fetchTasks();
@@ -80,18 +83,24 @@ export class TaskDetailPage implements OnInit {
   ionViewDidLeave(){
     if(this.taskSub){
       this.taskSub.unsubscribe();
-      console.log("Data in Tab 2 stopped fetching!");
+      console.log("Data fetching stopped in Tab 2!");
     }
   }
 
-  fetchTasks() {
-    this.taskService.loadTasks().subscribe({
-      next: (data) => {
-        console.log(data);
-        this.tasks = data;
-        // this.filterTasks();
-      }
-    })
+  async fetchTasks() {
+    const res = await this.taskService.loadTasks();
+    console.log(res);
+    this.filteredTasks = res;
+    this.tasks = [...this.filteredTasks];
+    this.filterTasks();
+    // this.taskService.loadTasks().subscribe({
+    //   next: (data) => {
+    //     console.log(data);
+    //     this.filteredTasks = data;
+    //     this.tasks = [...this.filteredTasks];
+    //     this.filterTasks();
+    //   }
+    // })
   }
 
   filterTasks(){
@@ -117,7 +126,7 @@ export class TaskDetailPage implements OnInit {
     this.editTaskModal = null;
   }
 
-  saveEdit() {
+  async saveEdit() {
     if (!this.editTaskModal || !this.editTaskModal._id) return;
 
     const updated: RTask = {
@@ -125,17 +134,24 @@ export class TaskDetailPage implements OnInit {
       name: this.editedTaskName,
       description: this.editedDescription,
     };
-    this.taskService.updateTask(updated._id!, updated).subscribe({
-      next: async (res) => {
-        // await this.sqlite.updateLocalTask(updated);
 
-        this.taskService.tasksFetch();
-        this.cancelEdit();
-        console.log(res);
-        await this.editToast('Task updated successfully!');
-      },
-      error: (err) => console.error('ERROR: ', err),
-    });
+    const isOnline = this.network.isOnline;
+
+    if(isOnline){
+      const res = await this.taskService.updateTask(updated._id!, updated);
+      this.taskService.tasksFetch();
+      this.cancelEdit();
+      console.log(res);
+      await this.editToast("Task updated successfully!")
+    } else{
+      await this.sqlite.updateLocalTask({
+        ...updated,
+        synced: 0
+      });
+      this.taskService.tasksFetch();
+      // await this.fetchTasks();
+      await this.editToast('Task updated successfully, will sync later!');  
+    }
   }
 
   async deleteTsk(task: RTask, event: Event) {
@@ -155,21 +171,26 @@ export class TaskDetailPage implements OnInit {
         {
           text: 'Delete',
           role: 'destructive',
-          handler: () => {
+          handler: async () => {
             if (!task._id) return;
-            this.taskService.deleteTask(task._id).subscribe({
-              next: async (data) => {
-                // await this.sqlite.deleteLocalTask(task._id!);
+            
+            const isOnline = this.network.isOnline;
 
+            if(isOnline){
+              try{
+                const res = await this.taskService.deleteTask(task._id);
                 this.taskService.tasksFetch();
-                console.log(data);
-                await this.deleteToast('Task Deleted Successfully!');
-                this.taskModal = null
-              },
-              error: (err) => {
-                console.error('ERROR', err);
-              },
-            });
+                await this.deleteToast("Task Deleted Successfully!");
+                this.taskModal = null;
+              } catch(err){
+                console.error("ERROR: ", err);
+              }
+            } else {
+              await this.sqlite.deleteLocalTask(task._id!);
+              this.taskService.tasksFetch();
+              await this.deleteToast('Task deleted locally. Will sync later.');
+              this.taskModal = null;
+            }
           },
         },
       ],
@@ -185,22 +206,38 @@ export class TaskDetailPage implements OnInit {
     this.taskModal = null;
   }
 
-  markAsCompleted() {
+  async markAsCompleted() {
     if (!this.taskModal || !this.taskModal._id) return;
 
     const updated: RTask = {
       ...this.taskModal,
       completed: true,
     };
-    this.taskService.updateTask(this.taskModal._id, updated).subscribe({
-      next: async () => {
-        // await this.sqlite.updateLocalTask(updated);
 
-        this.fetchTasks();
+    const isOnline = this.network.isOnline;
+
+    if(isOnline){
+      try{
+        const res = await this.taskService.updateTask(this.taskModal._id, updated);
+        console.log(res);
+        this.taskService.tasksFetch();
         this.closeTaskModal();
-      },
-      error: (err) => console.error('ERROR: ', err),
-    });
+      } catch(e){
+        console.error("ERROR: ", e)
+      }
+    } else{
+      await this.sqlite.updateLocalTask({ ...updated, synced: 0 });
+      this.closeTaskModal();
+    }
+    // this.taskService.updateTask(this.taskModal._id, updated).subscribe({
+    //   next: async () => {
+    //     // await this.sqlite.updateLocalTask(updated);
+
+    //     this.fetchTasks();
+    //     this.closeTaskModal();
+    //   },
+    //   error: (err) => console.error('ERROR: ', err),
+    // });
   }
 
   async editToast(message: string, color: string = 'success') {
@@ -233,7 +270,4 @@ export class TaskDetailPage implements OnInit {
     })
     this.capturedImage = image.webPath;
   }
-
-
-
 }
