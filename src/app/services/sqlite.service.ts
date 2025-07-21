@@ -1,5 +1,9 @@
 import { Injectable } from '@angular/core';
-import { SQLiteDBConnection, CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite'
+import {
+  SQLiteDBConnection,
+  CapacitorSQLite,
+  SQLiteConnection,
+} from '@capacitor-community/sqlite';
 import { RTask, Task } from '../model/task.model';
 
 @Injectable({
@@ -56,7 +60,7 @@ export class SqliteService {
     // const isCompleted = task.completed ? 1 : 0;
     // const synced = 0;
 
-    const query = `INSERT OR REPLACE INTO tasks (_id, userId, name, description, completed, createdAt, synced) VALUES ( ?, ?, ?, ?, ?, ?, ?)`;
+    const query = `INSERT OR REPLACE INTO tasks (_id, userId, name, description, completed, createdAt, synced, isDeleted) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const values = [
       task._id,
@@ -155,6 +159,15 @@ export class SqliteService {
       await this.db.execute('DELETE FROM tasks');
     } catch (err) {
       console.error('ERROR Occurred while clearing local tasks: ', err);
+    }
+  }
+
+  async sqlCommonMethod(query: string, values: any[] | undefined) {
+    if (!this.db) return;
+    try {
+      await this.db.run(query, values);
+    } catch (err) {
+      console.error('ERROR Occurred while updating local tasks: ', err);
     }
   }
 }

@@ -9,7 +9,9 @@ export class NetworkService {
   private _isOnline = new BehaviorSubject<boolean>(true);
   isOnline$ = this._isOnline.asObservable();
 
-  constructor() { this.initNetwork() }
+  constructor() { 
+    this.initNetwork();
+  }
 
   private async initNetwork(){
     const status = await Network.getStatus();

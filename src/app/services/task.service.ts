@@ -62,19 +62,25 @@ export class TaskService {
   async addTasks(task: RTask): Promise<void> {
     const isOnline = await firstValueFrom(this.network.isOnline$);
     const synced = isOnline ? 1 : 0;
+    const locald = uuidv4();
 
     // If offline, assign UUID
     const taskToSave = {
       ...task,
-      _id: isOnline ? task._id : uuidv4(),
+      _id: locald,
       synced,
+      isDeleted:0
     };
 
     await this.sqlite.addLocalTasks(taskToSave);
 
     if (isOnline) {
       try {
-        await firstValueFrom(this.http.post(this.apiUrl, task));
+        let resp : any = await firstValueFrom(this.http.post(this.apiUrl, task));
+        const updateQuery = "UPDATE tasks SET _id = ?, synced = ? WHERE _id = ?";
+        const updvalues = [resp._id, 1, locald];
+        await this.sqlite.sqlCommonMethod(updateQuery,updvalues);
+        console.info(resp)
       } catch (err) {
         console.error('Add Task API failed, saved locally', err);
       }
