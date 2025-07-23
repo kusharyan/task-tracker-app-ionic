@@ -320,6 +320,6 @@ export class TaskDetailPage  {
       source : CameraSource.Camera,
       saveToGallery: true
     })
-    this.capturedImage = image.webPath;
+    this.capturedImage = image.dataUrl;
   }
 }

@@ -114,9 +114,10 @@ export class SqliteService {
         task.description,
         task.completed ? 1 : 0,
         task.synced ?? 0,
-        1,
+        task.isUpdated ?? 1,
         task._id,
       ]);
+      console.log(`Updated task ${task._id}: synced=${task.synced}, isUpdated=${task.isUpdated}`);
     } catch (err) {
       console.error('ERROR Occurred while updating local tasks: ', err);
     }
