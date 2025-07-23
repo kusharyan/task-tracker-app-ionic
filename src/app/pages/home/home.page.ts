@@ -21,7 +21,7 @@ import { logOutOutline, syncOutline, camera } from 'ionicons/icons';
 import { ToastController} from '@ionic/angular';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { SqliteService } from 'src/app/services/sqlite.service';
-import { isObservable, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { NetworkService } from 'src/app/services/network.service';
 
 @Component({
@@ -83,7 +83,7 @@ export class HomePage implements OnInit {
   async fetchTasks(){
     try{
       const res = await this.taskService.loadTasks();
-      console.log(res);
+      console.log("Loaded all tasks in home page: ", res);
       this.tasks = res
         .filter(task=> task.createdAt)
         .sort((a, b)=> new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
@@ -115,16 +115,15 @@ export class HomePage implements OnInit {
         userId: localStorage.getItem('userId') || '',
         createdAt: new Date().toISOString(),
       }
-
-      // const isOnline = this.netwrork.isOnline;
-      try{
-        const res = await this.taskService.addTasks(newTask);
-        this.taskService.tasksFetch();
-        await this.showToast("Task Created Successfully!");
-      } catch(err){
-        console.error("ERROR: ", err);
-        await this.showToast("Failed to create task!");
-      }
+      
+      try {
+          const res = await this.taskService.addTasks(newTask);
+          this.taskService.tasksFetch();
+          await this.showToast('Task Created Successfully!');
+        } catch (err) {
+          console.error('ERROR: ', err);
+          await this.showToast('Failed to create task!');
+        }
       // this.taskService.addTasks({...this.taskForm.value, completed: false}).subscribe({
       //   next: async (data: RTask)=> {
       //     console.log('Task Added(API): ', data);

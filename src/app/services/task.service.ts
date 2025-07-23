@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
   providedIn: 'root',
 })
 export class TaskService {
-  private apiUrl = 'http://10.46.22.66:3000/api/tasks'; //IP address - 10.46.21.211
+  private apiUrl = 'http://192.168.0.108:3000/api/tasks';
   private taskSubject = new Subject<void>();
   taskSubject$ = this.taskSubject.asObservable();
 
@@ -19,8 +19,7 @@ export class TaskService {
     private network: NetworkService,
     private sqlite: SqliteService
   ) {
-    this.sqlite
-      .initDB()
+    this.sqlite.initDB()
       .then(() => {
         console.log('SQLite initialized from Task Service!');
       })
@@ -31,7 +30,7 @@ export class TaskService {
         this.syncOfflineTasks();
       }
     });
-  }
+  } 
 
   tasksFetch() {
     this.taskSubject.next();
@@ -39,6 +38,8 @@ export class TaskService {
 
   async loadTasks(): Promise<RTask[]> {
     const localTasks = await this.sqlite.getLocalTasks();
+    console.log("Local Tasks: ", localTasks);
+
     const isOnline = await firstValueFrom(this.network.isOnline$);
     if (isOnline) {
       try {
@@ -62,25 +63,26 @@ export class TaskService {
   async addTasks(task: RTask): Promise<void> {
     const isOnline = await firstValueFrom(this.network.isOnline$);
     const synced = isOnline ? 1 : 0;
-    const locald = uuidv4();
+    const localId = uuidv4();
 
     // If offline, assign UUID
     const taskToSave = {
       ...task,
-      _id: locald,
+      _id: localId,
       synced,
-      isDeleted:0
+      isDeleted: 0,
     };
 
     await this.sqlite.addLocalTasks(taskToSave);
 
     if (isOnline) {
       try {
-        let resp : any = await firstValueFrom(this.http.post(this.apiUrl, task));
-        const updateQuery = "UPDATE tasks SET _id = ?, synced = ? WHERE _id = ?";
-        const updvalues = [resp._id, 1, locald];
-        await this.sqlite.sqlCommonMethod(updateQuery,updvalues);
-        console.info(resp)
+        let resp: any = await firstValueFrom(this.http.post(this.apiUrl, task));
+        const updateQuery =
+          'UPDATE tasks SET _id = ?, synced = ? WHERE _id = ?';
+        const updvalues = [resp._id, 1, localId];
+        await this.sqlite.sqlCommonMethod(updateQuery, updvalues);
+        console.info(resp);
       } catch (err) {
         console.error('Add Task API failed, saved locally', err);
       }
@@ -90,8 +92,8 @@ export class TaskService {
   async updateTask(_id: string, task: RTask): Promise<void> {
     // return this.http.put<RTask>(`${this.apiUrl}/${_id}`, task );
     const isOnline = await firstValueFrom(this.network.isOnline$);
-    const updatedTask = { ...task, synced: isOnline ? 1 : 0 };
-
+    const updatedTask = { ...task, synced: isOnline ? 1 : 0, isUpdated: isOnline ? 0 : 1};
+    
     await this.sqlite.updateLocalTask(updatedTask);
 
     if (isOnline) {
@@ -101,6 +103,8 @@ export class TaskService {
         );
       } catch (e) {
         console.error('Update failed online while sync later: ', e);
+        const failedUpdateTask = {...task, synced: 0, isUpdated: 1};
+        await this.sqlite.updateLocalTask(failedUpdateTask);
       }
     }
   }
@@ -112,34 +116,98 @@ export class TaskService {
       try {
         await firstValueFrom(this.http.delete<RTask>(`${this.apiUrl}/${_id}`));
         await this.sqlite.deleteLocalTask(_id);
+        console.log("task deleted successfully from server and local db!")
       } catch (e) {
-        console.error('Delete failed Online.');
+        console.error('Delete failed Online.', e);
+        const query = `UPDATE tasks SET isDeleted = 1, synced = 0 WHERE _id = ?`;
+        await this.sqlite.sqlCommonMethod(query, [_id]);
       }
     } else {
-      await this.sqlite.deleteLocalTask(_id);
+      const query = `UPDATE tasks SET isDeleted = 1, synced = 0 WHERE _id = ?`;
+      await this.sqlite.sqlCommonMethod(query, [_id]);
+      console.log('Task marked for deletion, will sync when online');
     }
   }
 
+  // async syncOfflineTasks() {
+  //   const localTasks = await this.sqlite.getLocalTasks();
+  //   const unsyncedTasks = localTasks.filter((task) => task.synced === 0);
+
+  //   for (const task of unsyncedTasks) {
+  //     try {
+  //       const createdTask = await firstValueFrom(
+  //         this.http.post<RTask>(this.apiUrl, task)
+  //       );
+  //       // Replace local task UUID with backend _id
+  //       await this.sqlite.replaceTask(task._id!, {
+  //         ...createdTask,
+  //         synced: 1,
+  //       });
+
+  //       console.log(`Synced task "${task.name}" to server`);
+  //     } catch (err) {
+  //       console.error('Sync failed for task', task.name, err);
+  //     }
+  //   }
+  // }
+
   async syncOfflineTasks() {
-    const localTasks = await this.sqlite.getLocalTasks();
-    const unsyncedTasks = localTasks.filter((task) => task.synced === 0);
+    console.log("starting sync process...!")
+    const allLocalTasks = await this.sqlite.getUnsyncedTasks();
+    const deletedTasks = allLocalTasks.filter((task) => task.isDeleted === 1);
+    const addTasks = allLocalTasks.filter((task) => task.synced === 0 && task.isDeleted === 0 && task.isUpdated === 0);
+    const updatedTasks = allLocalTasks.filter((task) => task.isUpdated === 1 && task.isDeleted === 0);
 
-    for (const task of unsyncedTasks) {
+      for (const task of addTasks) {
+        try {
+          const createdTask = await firstValueFrom(
+            this.http.post<RTask>(this.apiUrl, task)
+          );
+
+          // Replace local task with server copy (preserves `_id`)
+          await this.sqlite.replaceTask(task._id!, {
+            ...createdTask,
+            synced: 1,
+            isUpdated: 0,
+            isDeleted: 0,
+          });
+
+          console.log(`Created task "${task.name}" synced`);
+        } catch (err) {
+          console.error(`Failed to sync new task "${task.name}"`, err);
+        }
+      }
+
+    for (const task of updatedTasks) {
       try {
-        const createdTask = await firstValueFrom(
-          this.http.post<RTask>(this.apiUrl, task)
-        );
-        // Replace local task UUID with backend _id
-        await this.sqlite.replaceTask(task._id!, {
-          ...createdTask,
-          synced: 1,
-        });
+        await firstValueFrom(this.http.put(`${this.apiUrl}/${task._id}`, task));
 
-        console.log(`Synced task "${task.name}" to server`);
+        await this.sqlite.sqlCommonMethod(
+          'UPDATE tasks SET synced = 1, isUpdated = 0 WHERE _id = ?',
+          [task._id]
+        );
+
+        console.log(`Updated task "${task.name}" synced`);
       } catch (err) {
-        console.error('Sync failed for task', task.name, err);
+        console.error(`Failed to sync updated task "${task.name}"`, err);
+      }
+    }
+
+    const locallyDeleted = deletedTasks.filter(task => task.synced === 0);
+    for (const task of locallyDeleted) {
+      await this.sqlite.deleteLocalTask(task._id!);
+      console.log(`🗑 Locally deleted task "${task.name}" permanently removed`);
+    }
+
+    // Sync deleted tasks
+    for (const task of deletedTasks) {
+      try {
+        await firstValueFrom(this.http.delete(`${this.apiUrl}/${task._id}`));
+        await this.sqlite.deleteLocalTask(task._id!);
+        console.log(`Deleted task "${task.name}" from server`);
+      } catch (err) {
+        console.error('Failed to delete task from server', task.name, err);
       }
     }
   }
 }
- //127.0.0.1:7555 mumu port number..

@@ -12,4 +12,6 @@ export interface RTask{
   completed: boolean;
   createdAt?: string
   synced?: number;
+  isDeleted?: number;
+  isUpdated?: number
 }

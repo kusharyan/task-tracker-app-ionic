@@ -89,8 +89,12 @@ export class TaskDetailPage  {
 
   async fetchTasks() {
     const res = await this.taskService.loadTasks();
-    console.log(res);
-    this.filteredTasks = res;
+    console.log("Loaded all tasks in tasks page: ", res);
+    
+    const sorted = res
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+
+    this.filteredTasks = sorted;
     this.tasks = [...this.filteredTasks];
     this.filterTasks();
     // this.taskService.loadTasks().subscribe({
@@ -137,20 +141,42 @@ export class TaskDetailPage  {
 
     const isOnline = this.network.isOnline;
 
-    if(isOnline){
-      const res = await this.taskService.updateTask(updated._id!, updated);
+    // if(isOnline){
+    //   const res = await this.taskService.updateTask(updated._id!, updated);
+    //   this.taskService.tasksFetch();
+    //   this.cancelEdit();
+    //   console.log(res);
+    //   await this.editToast("Task updated successfully!")
+    // } else{
+    //   await this.sqlite.updateLocalTask({
+    //     ...updated,
+    //     synced: 0,
+    //     isUpdated: 1
+    //   });
+
+
+    //   // const query = `UPDATE tasks SET name = ?, description = ?, completed = ?, synced = ? WHERE _id = ?`;
+    //   // await this.sqlite.sqlCommonMethod(query, [task._id]);
+    //   this.taskService.tasksFetch();
+    //   this.cancelEdit();
+    //   await this.editToast('Task updated successfully, will sync later!'); 
+    // }
+
+    try {
+      // FIXED: Use the taskService.updateTask method which handles online/offline logic
+      await this.taskService.updateTask(updated._id!, updated);
       this.taskService.tasksFetch();
       this.cancelEdit();
-      console.log(res);
-      await this.editToast("Task updated successfully!")
-    } else{
-      await this.sqlite.updateLocalTask({
-        ...updated,
-        synced: 0
-      });
-      this.taskService.tasksFetch();
-      // await this.fetchTasks();
-      await this.editToast('Task updated successfully, will sync later!');  
+      
+      const isOnline = this.network.isOnline;
+      const message = isOnline ? 
+        "Task updated successfully!" : 
+        "Task updated offline, will sync when online!";
+      
+      await this.editToast(message);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      await this.editToast('Failed to update task', 'danger');
     }
   }
 
@@ -186,11 +212,29 @@ export class TaskDetailPage  {
                 console.error("ERROR: ", err);
               }
             } else {
-              await this.sqlite.deleteLocalTask(task._id!);
+              const query = `UPDATE tasks SET isDeleted = 1, synced = 0 WHERE _id = ?`;
+              await this.sqlite.sqlCommonMethod(query, [task._id]); 
               this.taskService.tasksFetch();
               await this.deleteToast('Task deleted locally. Will sync later.');
               this.taskModal = null;
             }
+
+            // try {
+            //   // FIXED: Use the taskService.deleteTask method which handles all scenarios
+            //   await this.taskService.deleteTask(task._id);
+            //   this.taskService.tasksFetch();
+              
+            //   const isOnline = this.network.isOnline;
+            //   const message = isOnline ? 
+            //     "Task deleted successfully!" : 
+            //     "Task deleted offline, will sync when online!";
+                
+            //   await this.deleteToast(message);
+            //   this.taskModal = null;
+            // } catch (err) {
+            //   console.error("Delete error: ", err);
+            //   await this.deleteToast('Failed to delete task', 'danger');
+            // }
           },
         },
       ],
@@ -216,28 +260,36 @@ export class TaskDetailPage  {
 
     const isOnline = this.network.isOnline;
 
-    if(isOnline){
-      try{
-        const res = await this.taskService.updateTask(this.taskModal._id, updated);
-        console.log(res);
-        this.taskService.tasksFetch();
-        this.closeTaskModal();
-      } catch(e){
-        console.error("ERROR: ", e)
-      }
-    } else{
-      await this.sqlite.updateLocalTask({ ...updated, synced: 0 });
-      this.closeTaskModal();
-    }
-    // this.taskService.updateTask(this.taskModal._id, updated).subscribe({
-    //   next: async () => {
-    //     // await this.sqlite.updateLocalTask(updated);
-
-    //     this.fetchTasks();
+    // if(isOnline){
+    //   try{
+    //     const res = await this.taskService.updateTask(this.taskModal._id, updated);
+    //     console.log(res);
+    //     this.taskService.tasksFetch();
     //     this.closeTaskModal();
-    //   },
-    //   error: (err) => console.error('ERROR: ', err),
-    // });
+    //   } catch(e){
+    //     console.error("ERROR: ", e)
+    //   }
+    // } else{
+    //   await this.sqlite.updateLocalTask({ ...updated, synced: 0, isUpdated: 1 });
+    //   this.closeTaskModal();
+    // }
+  
+    try {
+      // FIXED: Use the taskService.updateTask method for consistency
+      await this.taskService.updateTask(this.taskModal._id, updated);
+      this.taskService.tasksFetch();
+      this.closeTaskModal();
+      
+      const isOnline = this.network.isOnline;
+      const message = isOnline ? 
+        "Task marked as completed!" : 
+        "Task completed offline, will sync when online!";
+        
+      await this.editToast(message);
+    } catch (e) {
+      console.error("Error marking task as completed: ", e);
+      await this.editToast('Failed to mark task as completed', 'danger');
+    }
   }
 
   async editToast(message: string, color: string = 'success') {
