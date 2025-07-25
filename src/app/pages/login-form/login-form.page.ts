@@ -14,7 +14,7 @@ import { addIcons } from 'ionicons';
 import { mailSharp, lockClosed } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { AuthService } from 'src/app/services/auth.service';
-import { ToastController } from '@ionic/angular';
+import { ToastService } from 'src/app/services/toast.service';
 
 @Component({
   selector: 'app-login-form',
@@ -38,7 +38,7 @@ export class LoginFormPage implements OnInit, OnDestroy {
   errorMessage: string = '';
   private loginSub!: Subscription;
 
-  constructor(private fb: FormBuilder, private router: Router , private auth: AuthService, private toast: ToastController){
+  constructor(private fb: FormBuilder, private router: Router , private auth: AuthService, private toast: ToastService){
     addIcons({mailSharp,lockClosed});
     
     }
@@ -58,25 +58,15 @@ export class LoginFormPage implements OnInit, OnDestroy {
           this.auth.saveToken(res.token);
           this.router.navigate(['/tabs/home']);
           console.log('User LoggedIn',res);
-          await this.showToast('Login Successful!');
+          await this.toast.showActionToast('login', 'success');
         },
         error: async (err)=> {
           this.errorMessage = 'Invalid Login Credentials';
           console.error('ERROR: ', err);
-          await this.showToast('Login Failed, Try Again!');
+          await this.toast.showActionToast('login', 'error');
         }
       })
     }
-  }
-
-  async showToast(message: string, color: string = 'success'){
-    const toast = await this.toast.create({
-      message,
-      duration: 1000,
-      position: 'top',
-      color
-    });
-    await toast.present();
   }
 
   ngOnDestroy(): void {

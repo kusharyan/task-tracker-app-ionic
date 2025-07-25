@@ -71,7 +71,7 @@ export class SqliteService {
       task.createdAt,
       task.synced ?? 0,
       task.isDeleted ?? 0,
-      task.isUpdated ?? 0
+      0
     ];
     await this.db.run(query, values);
   }
@@ -90,6 +90,8 @@ export class SqliteService {
         completed: !!t.completed,
         createdAt: t.createdAt,
         synced: t.synced,
+        isDeleted: t.isDeleted,
+        isUpdated: t.isUpdated
       })) || []
     );
   }
@@ -135,7 +137,8 @@ export class SqliteService {
         completed: !!t.completed,
         createdAt: t.createdAt,
         synced: t.synced,
-        isDeleted: t.isDeleted
+        isDeleted: t.isDeleted,
+        isUpdated: t.isUpdated
       })) || []
     );
   }

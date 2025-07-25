@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
   providedIn: 'root',
 })
 export class TaskService {
-  private apiUrl = 'http://192.168.0.108:3000/api/tasks';
+  private apiUrl = 'http://10.46.20.116:3000/api/tasks';
   private taskSubject = new Subject<void>();
   taskSubject$ = this.taskSubject.asObservable();
 
@@ -71,6 +71,7 @@ export class TaskService {
       _id: localId,
       synced,
       isDeleted: 0,
+      isUpdated:0
     };
 
     await this.sqlite.addLocalTasks(taskToSave);
@@ -129,30 +130,7 @@ export class TaskService {
     }
   }
 
-  // async syncOfflineTasks() {
-  //   const localTasks = await this.sqlite.getLocalTasks();
-  //   const unsyncedTasks = localTasks.filter((task) => task.synced === 0);
-
-  //   for (const task of unsyncedTasks) {
-  //     try {
-  //       const createdTask = await firstValueFrom(
-  //         this.http.post<RTask>(this.apiUrl, task)
-  //       );
-  //       // Replace local task UUID with backend _id
-  //       await this.sqlite.replaceTask(task._id!, {
-  //         ...createdTask,
-  //         synced: 1,
-  //       });
-
-  //       console.log(`Synced task "${task.name}" to server`);
-  //     } catch (err) {
-  //       console.error('Sync failed for task', task.name, err);
-  //     }
-  //   }
-  // }
-
   async syncOfflineTasks() {
-    console.log("starting sync process...!")
     const allLocalTasks = await this.sqlite.getUnsyncedTasks();
     const deletedTasks = allLocalTasks.filter((task) => task.isDeleted === 1);
     const addTasks = allLocalTasks.filter((task) => task.synced === 0 && task.isDeleted === 0 && task.isUpdated === 0);
@@ -164,7 +142,6 @@ export class TaskService {
             this.http.post<RTask>(this.apiUrl, task)
           );
 
-          // Replace local task with server copy (preserves `_id`)
           await this.sqlite.replaceTask(task._id!, {
             ...createdTask,
             synced: 1,
@@ -191,12 +168,6 @@ export class TaskService {
       } catch (err) {
         console.error(`Failed to sync updated task "${task.name}"`, err);
       }
-    }
-
-    const locallyDeleted = deletedTasks.filter(task => task.synced === 0);
-    for (const task of locallyDeleted) {
-      await this.sqlite.deleteLocalTask(task._id!);
-      console.log(`🗑 Locally deleted task "${task.name}" permanently removed`);
     }
 
     // Sync deleted tasks

@@ -8,13 +8,16 @@
 
   <ion-segment [(ngModel)]="filterStatus" (ionChange)="filterTasks()">
     <ion-segment-button value="all">
-      <ion-icon name="list-outline"></ion-icon>
+      <!-- <ion-icon name="list-outline"></ion-icon> -->
+      <p>All</p>
     </ion-segment-button>
     <ion-segment-button value="completed">
-      <ion-icon name="checkmark-done-outline"></ion-icon>
+      <!-- <ion-icon name="checkmark-done-outline"></ion-icon> -->
+      <P>Completed</P>
     </ion-segment-button>
     <ion-segment-button value="pending">
-      <ion-icon name="time-outline"></ion-icon>
+      <!-- <ion-icon name="time-outline"></ion-icon> -->
+      <p>Pending</p>
     </ion-segment-button>
   </ion-segment>
 
@@ -27,6 +30,11 @@
           <p style="margin-top: 8px;">
             <ion-badge [color]="task.completed ? 'success' : 'warning'">
               {{ task.completed ? 'Completed' : 'Pending' }}
+            </ion-badge>
+          </p>
+          <p>
+            <ion-badge [color]="task.synced ? 'success' : 'warning'">
+              {{task.synced ? 'Synced' : 'Not Synced'}}
             </ion-badge>
           </p>
         </ion-label>

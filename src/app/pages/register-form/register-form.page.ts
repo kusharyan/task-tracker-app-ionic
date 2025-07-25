@@ -7,7 +7,7 @@ import { AuthService } from 'src/app/services/auth.service';
 import { addIcons } from 'ionicons';
 import { lockClosed, mailSharp } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
-import { ToastController } from '@ionic/angular';
+import { ToastService } from 'src/app/services/toast.service';
 @Component({
   selector: 'app-register-form',
   templateUrl: './register-form.page.html',
@@ -20,7 +20,7 @@ export class RegisterFormPage implements OnInit, OnDestroy {
   errorMessage: string = '';
   registerSub!: Subscription;
 
-  constructor(private router: Router, private auth: AuthService, private fb: FormBuilder, private toast: ToastController) {
+  constructor(private router: Router, private auth: AuthService, private fb: FormBuilder, private toast: ToastService) {
     addIcons({mailSharp,lockClosed});
    }
 
@@ -39,24 +39,14 @@ export class RegisterFormPage implements OnInit, OnDestroy {
           this.auth.saveToken(res.token);
           // this.router.navigate(['/login-form']);
           console.log(res);
-          await this.showToast('Registration successful!')
+          await this.toast.showActionToast('register', 'success')
         },
         error: async ()=> {
           console.error();
-          await this.showToast('Registration failed. Please try again.')
+          await this.toast.showActionToast('register', 'error')
         }
       })
     }
-  }
-
-  async showToast(message: string){
-    const toast = await this.toast.create({
-    message: message,
-    duration: 3000,
-    color: 'success',
-    position: 'top'
-  });
-  await toast.present();
   }
 
   ngOnDestroy(): void {

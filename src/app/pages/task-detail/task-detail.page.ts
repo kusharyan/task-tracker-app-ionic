@@ -18,11 +18,12 @@ import { TaskService } from 'src/app/services/task.service';
 import { RTask } from 'src/app/model/task.model';
 import { addIcons } from 'ionicons';
 import { trashOutline, filterOutline, closeOutline, createOutline, camera, listOutline, checkmarkDoneOutline, timeOutline, searchOutline } from 'ionicons/icons';
-import { ToastController, AlertController } from '@ionic/angular';
+import { AlertController } from '@ionic/angular';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Subscription } from 'rxjs';
 import { SqliteService } from 'src/app/services/sqlite.service';
 import { NetworkService } from 'src/app/services/network.service';
+import { ToastService } from 'src/app/services/toast.service';
 
 @Component({
   selector: 'app-task-detail',
@@ -67,7 +68,7 @@ export class TaskDetailPage  {
     private taskService: TaskService,
     private sqlite: SqliteService,
     private network: NetworkService,
-    private toastCtrl: ToastController,
+    private toast: ToastService,
     private alertCtrl: AlertController,
   ) {
     addIcons({searchOutline,listOutline,checkmarkDoneOutline,timeOutline,closeOutline,camera,trashOutline,createOutline,filterOutline});
@@ -97,14 +98,6 @@ export class TaskDetailPage  {
     this.filteredTasks = sorted;
     this.tasks = [...this.filteredTasks];
     this.filterTasks();
-    // this.taskService.loadTasks().subscribe({
-    //   next: (data) => {
-    //     console.log(data);
-    //     this.filteredTasks = data;
-    //     this.tasks = [...this.filteredTasks];
-    //     this.filterTasks();
-    //   }
-    // })
   }
 
   filterTasks(){
@@ -139,44 +132,15 @@ export class TaskDetailPage  {
       description: this.editedDescription,
     };
 
-    const isOnline = this.network.isOnline;
-
-    // if(isOnline){
-    //   const res = await this.taskService.updateTask(updated._id!, updated);
-    //   this.taskService.tasksFetch();
-    //   this.cancelEdit();
-    //   console.log(res);
-    //   await this.editToast("Task updated successfully!")
-    // } else{
-    //   await this.sqlite.updateLocalTask({
-    //     ...updated,
-    //     synced: 0,
-    //     isUpdated: 1
-    //   });
-
-
-    //   // const query = `UPDATE tasks SET name = ?, description = ?, completed = ?, synced = ? WHERE _id = ?`;
-    //   // await this.sqlite.sqlCommonMethod(query, [task._id]);
-    //   this.taskService.tasksFetch();
-    //   this.cancelEdit();
-    //   await this.editToast('Task updated successfully, will sync later!'); 
-    // }
-
     try {
-      // FIXED: Use the taskService.updateTask method which handles online/offline logic
       await this.taskService.updateTask(updated._id!, updated);
       this.taskService.tasksFetch();
       this.cancelEdit();
       
-      const isOnline = this.network.isOnline;
-      const message = isOnline ? 
-        "Task updated successfully!" : 
-        "Task updated offline, will sync when online!";
-      
-      await this.editToast(message);
+      await this.toast.showActionToast('edit', 'success');
     } catch (error) {
       console.error('Error updating task:', error);
-      await this.editToast('Failed to update task', 'danger');
+      await this.toast.showActionToast('edit', 'error');
     }
   }
 
@@ -199,42 +163,16 @@ export class TaskDetailPage  {
           role: 'destructive',
           handler: async () => {
             if (!task._id) return;
-            
-            const isOnline = this.network.isOnline;
 
-            if(isOnline){
-              try{
-                const res = await this.taskService.deleteTask(task._id);
-                this.taskService.tasksFetch();
-                await this.deleteToast("Task Deleted Successfully!");
-                this.taskModal = null;
-              } catch(err){
-                console.error("ERROR: ", err);
-              }
-            } else {
-              const query = `UPDATE tasks SET isDeleted = 1, synced = 0 WHERE _id = ?`;
-              await this.sqlite.sqlCommonMethod(query, [task._id]); 
+            try {
+              const res = await this.taskService.deleteTask(task._id);
               this.taskService.tasksFetch();
-              await this.deleteToast('Task deleted locally. Will sync later.');
+              await this.toast.showActionToast('delete', 'success');
               this.taskModal = null;
+            } catch (err) {
+              console.error('ERROR: ', err);
+              await this.toast.showActionToast('delete', 'error');
             }
-
-            // try {
-            //   // FIXED: Use the taskService.deleteTask method which handles all scenarios
-            //   await this.taskService.deleteTask(task._id);
-            //   this.taskService.tasksFetch();
-              
-            //   const isOnline = this.network.isOnline;
-            //   const message = isOnline ? 
-            //     "Task deleted successfully!" : 
-            //     "Task deleted offline, will sync when online!";
-                
-            //   await this.deleteToast(message);
-            //   this.taskModal = null;
-            // } catch (err) {
-            //   console.error("Delete error: ", err);
-            //   await this.deleteToast('Failed to delete task', 'danger');
-            // }
           },
         },
       ],
@@ -257,59 +195,17 @@ export class TaskDetailPage  {
       ...this.taskModal,
       completed: true,
     };
-
-    const isOnline = this.network.isOnline;
-
-    // if(isOnline){
-    //   try{
-    //     const res = await this.taskService.updateTask(this.taskModal._id, updated);
-    //     console.log(res);
-    //     this.taskService.tasksFetch();
-    //     this.closeTaskModal();
-    //   } catch(e){
-    //     console.error("ERROR: ", e)
-    //   }
-    // } else{
-    //   await this.sqlite.updateLocalTask({ ...updated, synced: 0, isUpdated: 1 });
-    //   this.closeTaskModal();
-    // }
   
     try {
-      // FIXED: Use the taskService.updateTask method for consistency
       await this.taskService.updateTask(this.taskModal._id, updated);
       this.taskService.tasksFetch();
       this.closeTaskModal();
       
-      const isOnline = this.network.isOnline;
-      const message = isOnline ? 
-        "Task marked as completed!" : 
-        "Task completed offline, will sync when online!";
-        
-      await this.editToast(message);
+      await this.toast.showActionToast('complete', 'success');
     } catch (e) {
       console.error("Error marking task as completed: ", e);
-      await this.editToast('Failed to mark task as completed', 'danger');
+      await this.toast.showActionToast('complete', 'error');
     }
-  }
-
-  async editToast(message: string, color: string = 'success') {
-    const toast = await this.toastCtrl.create({
-      message,
-      duration: 1000,
-      position: 'top',
-      color,
-    });
-    await toast.present();
-  }
-
-  async deleteToast(message: string, color: string = 'warning') {
-    const toast = await this.toastCtrl.create({
-      message,
-      duration: 1000,
-      position: 'top',
-      color,
-    });
-    await toast.present();
   }
   
   async takePhoto() {

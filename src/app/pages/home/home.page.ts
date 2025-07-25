@@ -18,11 +18,11 @@ import { AuthService } from 'src/app/services/auth.service';
 import { RTask } from 'src/app/model/task.model';
 import { addIcons } from 'ionicons';
 import { logOutOutline, syncOutline, camera } from 'ionicons/icons';
-import { ToastController} from '@ionic/angular';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { SqliteService } from 'src/app/services/sqlite.service';
 import { Subscription } from 'rxjs';
 import { NetworkService } from 'src/app/services/network.service';
+import { ToastService } from 'src/app/services/toast.service';
 
 @Component({
   selector: 'app-home',
@@ -55,7 +55,7 @@ export class HomePage implements OnInit {
     private netwrork: NetworkService,
     private router: Router, 
     private fb: FormBuilder,
-    private toast: ToastController) { 
+    private toast: ToastService,) { 
       addIcons({logOutOutline,camera,syncOutline});
   }
 
@@ -91,16 +91,6 @@ export class HomePage implements OnInit {
     } catch(e){
       console.error("ERROR while Fetching tasks: ", e);
     }
-    // this.taskService.loadTasks().subscribe({
-    //   next: (data)=> {
-    //     console.log(data);
-    //     this.tasks = data
-    //       .filter(task=> task.createdAt)
-    //       .sort((a, b)=> new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-    //       .slice(0, 4);
-    //   },  
-    //   error: (err)=> console.error('ERROR: ', err)
-    // })
   }
 
   async addTask() {
@@ -119,20 +109,11 @@ export class HomePage implements OnInit {
       try {
           const res = await this.taskService.addTasks(newTask);
           this.taskService.tasksFetch();
-          await this.showToast('Task Created Successfully!');
+          await this.toast.showActionToast('add', 'success');
         } catch (err) {
           console.error('ERROR: ', err);
-          await this.showToast('Failed to create task!');
+          await this.toast.showActionToast('add', 'error');
         }
-      // this.taskService.addTasks({...this.taskForm.value, completed: false}).subscribe({
-      //   next: async (data: RTask)=> {
-      //     console.log('Task Added(API): ', data);
-
-      //     this.taskService.tasksFetch();
-      //     await this.showToast('Task Created Successfully!')
-      //   },
-      //   error: (err)=> console.log('ERROR: ', err)
-      // })
       this.taskForm.reset(); 
     }
   }
@@ -143,13 +124,7 @@ export class HomePage implements OnInit {
     this.router.navigate(['/login-form']);
   }
 
-  async showToast(message: string, color: string = 'secondary'){
-    const toast = await this.toast.create({
-      message,
-      duration: 1000,
-      position: 'top',
-      color
-    })
-    await toast.present();
+  async performSync(){
+    await this.taskService.syncOfflineTasks();
   }
 }
